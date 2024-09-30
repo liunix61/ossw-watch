@@ -14,6 +14,7 @@
 #define CHARACTERISTIC_UUID "beb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 class MyCallbacks : public BLECharacteristicCallbacks {
+  // @todo memory management: reduce, reuse, dispose after use
   void onWrite(BLECharacteristic *pCharacteristic) {
     String value = pCharacteristic->getValue();
 
