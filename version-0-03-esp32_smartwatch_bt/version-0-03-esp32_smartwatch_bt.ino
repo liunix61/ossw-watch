@@ -41,6 +41,29 @@
 Adafruit_SSD1327 display(128, 128, &Wire, OLED_RESET, 1000000);
 
 /**
+ * CLASSES
+ */
+
+class MyCallbacks : public BLECharacteristicCallbacks {
+  // @todo memory management: reduce, reuse, dispose after use
+  void onWrite(BLECharacteristic *pCharacteristic) {
+    // local variables destroyed
+    String value = pCharacteristic->getValue();
+
+    if (value.length() > 0) {
+      Serial.println("*********");
+      Serial.print("New value: ");
+      for (int i = 0; i < value.length(); i++) {
+        Serial.print(value[i]);
+      }
+
+      Serial.println();
+      Serial.println("*********");
+    }
+  }
+};
+
+/**
  * DECLARATIONS
  */
 
@@ -53,8 +76,6 @@ String tString2;
 float startTime = 0;
 String mode = "";
 String timeString = "";
-String battPercent = "";
-int timerBatt = 0;
 int timerClk = 0;
 int currTime = 0;
 int secOnes = 0;
@@ -72,17 +93,17 @@ int btn2LastState = 0;
 
 void setup() {
   Serial.begin(115200);
-  while ( !Serial ) delay(10);   // for nrf52840 with native usb
+  while ( !Serial ) delay(10);
   
-  Serial.println(F("Adafruit Bluefruit52 Controller App Example"));
-  Serial.println(F("-------------------------------------------"));
+  Serial.println(F("Open Source Smart Watch App"));
+  Serial.println(F("---------------------------"));
 
   pinMode(BTN_1_PIN, INPUT);
   pinMode(BTN_2_PIN, INPUT);
 
   displaySetup();
 
-  //bluetoothSetup();
+  bluetoothSetup();
 
   startTime = millis() / 1000;
 }
@@ -173,20 +194,6 @@ void loop() {
     btn2LastState = 0;
   }
   */
-  
-  /*
-   * BATTERY
-   */
-   /*
-  if (timerBatt == 200) {
-    drawText("Batt: " + battPercent, 30, 0, SSD1327_BLACK);
-    battPercent = getBattPercent(battPercent);
-    drawText("Batt: " + battPercent, 30, 0, SSD1327_WHITE);
-    timerBatt = 0;
-  } else {
-    timerBatt = timerBatt + 1;
-  }
-  */
 
   /*
    * TIMER
@@ -274,37 +281,22 @@ String switchMode(String mode) {
 }
 */
 
-// @todo memory management: modify value, dont make a new one
-String getBattPercent(String prevPercent) {
-  // local variables destroyed
-  float measuredvbat;
-  measuredvbat = analogRead(VBATPIN);
-  measuredvbat *= 2;    // we divided by 2, so multiply back
-  measuredvbat *= 3.6;  // Multiply by 3.6V, our reference voltage
-  measuredvbat /= 1024; // convert to voltage
+void bluetoothSetup() {
+  BLEDevice::init("MyESP32");
+  BLEServer *pServer = BLEDevice::createServer();
 
-  measuredvbat = (measuredvbat - 3.7) / .005;
+  BLEService *pService = pServer->createService(SERVICE_UUID);
 
-  return String(measuredvbat) + "%";
+  BLECharacteristic *pCharacteristic =
+    pService->createCharacteristic(CHARACTERISTIC_UUID, BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE);
+
+  pCharacteristic->setCallbacks(new MyCallbacks());
+
+  pCharacteristic->setValue("Hello World");
+  pService->start();
+
+  BLEAdvertising *pAdvertising = pServer->getAdvertising();
+  pAdvertising->start();
 }
 
-
-class MyCallbacks : public BLECharacteristicCallbacks {
-  // @todo memory management: reduce, reuse, dispose after use
-  void onWrite(BLECharacteristic *pCharacteristic) {
-    // local variables destroyed
-    String value = pCharacteristic->getValue();
-
-    if (value.length() > 0) {
-      Serial.println("*********");
-      Serial.print("New value: ");
-      for (int i = 0; i < value.length(); i++) {
-        Serial.print(value[i]);
-      }
-
-      Serial.println();
-      Serial.println("*********");
-    }
-  }
-};
 
